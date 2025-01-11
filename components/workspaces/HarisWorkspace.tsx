@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Matrix, FilterType, DEFAULT_FILTERS } from './types';
+import TFOperationsBrowser from '../MatrixPlaylist';
 
 const HarisWorkspace = () => {
   // State is identical to Mukhtar's workspace but independent
@@ -153,6 +154,10 @@ const HarisWorkspace = () => {
           <TabsTrigger value="normal">Normal</TabsTrigger>
           <TabsTrigger value="advanced">Advanced</TabsTrigger>
         </TabsList>
+
+        <div className="mb-6">
+          <TFOperationsBrowser />
+        </div>
 
         <TabsContent value="normal" className="space-y-4">
           <div className="space-y-4">
