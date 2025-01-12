@@ -1,3 +1,4 @@
+/* eslint-disable prefer-const */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Part 1: Core Types and Interfaces
@@ -27,21 +28,25 @@ import * as Icons from 'lucide-react';
 
 // DND Kit imports
 import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-} from '@dnd-kit/sortable';
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragEndEvent,
+  } from '@dnd-kit/core';
+  import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    verticalListSortingStrategy,
+    useSortable,
+  } from '@dnd-kit/sortable';
+import MLDashboard from './MLDashboard';
+import FolderTreeVisualization from './FolderTreeVisualization';
+import DatasetStructureCard from './DatasetStructureCard';
+import DataShufflingDialog from './DataShufflingDialog';
 
 // Define ALL categories
 const CATEGORIES = {
@@ -136,7 +141,10 @@ interface OperationConfig {
 
 type CategoryType = typeof CATEGORIES[keyof typeof CATEGORIES];
 
-
+interface ImageItem {
+    id: number;
+    name: string;
+  }
 
 interface Operation {
   id: string;
@@ -2286,6 +2294,8 @@ const allOperations: Operation[] = [
       </CardContent>
     </Card>
   );
+
+  
   
   const OperationDetails = ({ operation }: { operation: Operation }) => (
     <Dialog>
@@ -2339,46 +2349,576 @@ const allOperations: Operation[] = [
     config: Record<string, any>;
     onChange: (key: string, value: any) => void;
   }) => {
-    // Early return if no config
     if (!operation.config) return null;
   
-  
     return (
-      <Accordion type="single" collapsible className="w-full">
-        <AccordionItem value="config">
-          <AccordionTrigger className="hover:no-underline">
-            <div className="flex items-center gap-2">
-              <Icons.Settings className="h-4 w-4" />
-              Configuration
+        <div className="space-y-4">
+          {/* Performance Tips and Support Badges moved from Details */}
+          {operation.performance_tips && (
+            <div className="space-y-2">
+              <h3 className="font-medium text-sm">Performance Tips</h3>
+              <ul className="list-disc pl-4 space-y-1">
+                {operation.performance_tips.map((tip, i) => (
+                  <li key={i} className="text-gray-600 text-sm">{tip}</li>
+                ))}
+              </ul>
             </div>
-          </AccordionTrigger>
-          <AccordionContent>
-            <div className="space-y-4 p-2">
-              {Object.entries(operation.config).map(([key, field]) => (
-                <div key={key} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">{field.label}</label>
-                    {field.required && (
-                      <Badge variant="outline" className="text-xs">Required</Badge>
+          )}
+          <div className="flex gap-4">
+            <Badge variant={operation.gpu_support ? "default" : "secondary"}>
+              GPU {operation.gpu_support ? "✓" : "✗"}
+            </Badge>
+            <Badge variant={operation.tpu_support ? "default" : "secondary"}>
+              TPU {operation.tpu_support ? "✓" : "✗"}
+            </Badge>
+          </div>
+    
+          {/* Configuration Panel */}
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="config">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-2">
+                  <Icons.Settings className="h-4 w-4" />
+                  Configuration
+                </div>
+              </AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-4 p-2">
+                  {Object.entries(operation.config).map(([key, field]) => (
+                    <div key={key} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium">{field.label}</label>
+                        {field.required && (
+                          <Badge variant="outline" className="text-xs">Required</Badge>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        value={config[key] ?? field.default}
+                        onChange={(e) => onChange(key, e.target.value)}
+                        className="border p-2 rounded"
+                      />
+                      {field.description && (
+                        <p className="text-xs text-gray-500">{field.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
+      );
+    };
+    
+    // 2. Create a new SortableOperationItem component for drag-and-drop
+const SortableOperationItem = ({ 
+    operation,
+    config,
+    onConfigChange,
+    onDelete,
+    id
+  }: { 
+    operation: Operation;
+    config: Record<string, any>;
+    onConfigChange: (key: string, value: any) => void;
+    onDelete: () => void;
+    id: string;
+  }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+    } = useSortable({ id });
+  
+    const style = {
+      transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+      transition,
+    };
+    return (
+        <div ref={setNodeRef} style={style} className="mb-4">
+          <Card>
+            <CardHeader className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div {...attributes} {...listeners} className="cursor-grab">
+                    <Icons.GripVertical className="h-4 w-4 text-gray-400" />
+                  </div>
+                  {operation.icon}
+                  <span className="font-medium">{operation.name}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        <Icons.Settings className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          {operation.icon}
+                          {operation.name} Configuration
+                        </DialogTitle>
+                      </DialogHeader>
+                      <ConfigurationPanel
+                        operation={operation}
+                        config={config}
+                        onChange={onConfigChange}
+                      />
+                    </DialogContent>
+                  </Dialog>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={onDelete}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <Icons.Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+          </Card>
+        </div>
+      );
+    };
+
+
+    
+    const ImageUploadSection = ({
+        onFileUpload
+      }: {
+        onFileUpload: (file: File) => void
+      }) => {
+        const [isDragging, setIsDragging] = useState(false);
+        const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+        const [imagePreview, setImagePreview] = useState<string>('');
+        const [isAdvancedMode, setIsAdvancedMode] = useState(false);
+        const [images, setImages] = useState<ImageItem[]>([]);
+        const [isShuffling, setIsShuffling] = useState(false);
+        const [bufferImages, setBufferImages] = useState<ImageItem[]>([]);
+        const [imageDimensions, setImageDimensions] = useState({
+          width: 0,
+          height: 0
+        });
+
+        useEffect(() => {
+            // Initialize with sample images when a file is uploaded
+            if (uploadedFile) {
+              setImages(Array.from({ length: 8 }, (_, i) => ({
+                id: i + 1,
+                name: `Image ${i + 1}`,
+              })));
+            }
+          }, [uploadedFile]);
+
+          // Add the shuffling function
+  const shuffleBuffer = async () => {
+    if (images.length <= 1) return;
+    setIsShuffling(true);
+    
+    const bufferSize = 4;
+    for (let i = 0; i < images.length; i += bufferSize) {
+      const buffer = images.slice(i, i + bufferSize);
+      setBufferImages(buffer);
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      const shuffledBuffer = [...buffer].sort(() => Math.random() - 0.5);
+      setBufferImages(shuffledBuffer);
+      await new Promise(resolve => setTimeout(resolve, 400));
+    }
+    
+    setIsShuffling(false);
+  };
+
+        // Basic parameters with descriptions
+  const [basicConfig, setBasicConfig] = useState({
+    height: 224,
+    width: 224,
+    normalize: true
+  });
+
+  const [advancedConfig, setAdvancedConfig] = useState({
+    resizing: {
+      method: 'bilinear',
+      preserveAspectRatio: true,
+      antialias: true
+    },
+    preprocessing: {
+      centerCrop: false,
+      channelFirst: false,
+      grayscale: false
+    },
+    advanced: {
+      alignCorners: false,
+      gamma: 1.0
+    }
+  });
+      
+        const formatFileSize = (bytes: number) => {
+          if (bytes === 0) return '0 Bytes';
+          const k = 1024;
+          const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+          const i = Math.floor(Math.log(bytes) / Math.log(k));
+          return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        };
+      
+        const [resizeConfig, setResizeConfig] = useState({
+          height: 224,
+          width: 224,
+          method: 'bilinear',
+          preserveAspectRatio: true,
+          antialias: true,
+          normalize: true
+        });
+      
+        const resizeMethods = [
+            { value: 'bilinear', label: 'Bilinear', description: 'Best for general use' },
+            { value: 'bicubic', label: 'Bicubic', description: 'Better quality but slower' },
+            { value: 'nearest', label: 'Nearest', description: 'Fastest but lower quality' },
+            { value: 'lanczos3', label: 'Lanczos3', description: 'High quality for downscaling' }
+          ];
+
+          const handleRemoveImage = () => {
+            setUploadedFile(null);
+            setImagePreview('');
+            setImageDimensions({ width: 0, height: 0 });
+          };
+      
+        const handleDragOver = (e: React.DragEvent) => {
+          e.preventDefault();
+          setIsDragging(true);
+        };
+      
+        const handleDragLeave = () => {
+          setIsDragging(false);
+        };
+      
+        const handleDrop = async (e: React.DragEvent) => {
+            e.preventDefault();
+            setIsDragging(false);
+            
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+              await processFile(file);
+            }
+          };
+      
+          const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+            const file = e.target.files?.[0];
+            if (file && file.type.startsWith('image/')) {
+              await processFile(file);
+            }
+          };
+      
+        const processFile = async (file: File) => {
+          setUploadedFile(file);
+          onFileUpload(file);
+      
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            setImagePreview(e.target?.result as string);
+          };
+          reader.readAsDataURL(file);
+        };
+      
+        return (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">Image Input</CardTitle>
+                    <CardDescription>Configure image preprocessing</CardDescription>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <Label>Advanced Mode</Label>
+                      <Switch
+                        checked={isAdvancedMode}
+                        onCheckedChange={setIsAdvancedMode}
+                      />
+                    </div>
+                    {uploadedFile && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={handleRemoveImage}
+                        className="flex items-center gap-2"
+                      >
+                        <Icons.X className="h-4 w-4" />
+                        Remove Image
+                      </Button>
                     )}
                   </div>
-                  <ConfigField
-                    field={field}
-                    value={config[key] ?? field.default}
-                    onChange={(value) => onChange(key, value)}
-                  />
-                  {field.description && (
-                    <p className="text-xs text-gray-500">{field.description}</p>
-                  )}
                 </div>
-              ))}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-    );
-  };
-  
+              </CardHeader>
+              <CardContent>
+                {!uploadedFile ? (
+                  <div
+                    className={`border-2 border-dashed rounded-lg p-6 text-center ${
+                      isDragging ? 'border-primary bg-secondary/20' : 'border-border'
+                    }`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                  >
+                    <div className="space-y-4">
+                      <Icons.Image className="h-10 w-10 mx-auto text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">
+                          Drag and drop your image here, or{' '}
+                          <label className="text-primary hover:underline cursor-pointer">
+                            browse
+                            <input
+                              type="file"
+                              className="hidden"
+                              accept="image/*"
+                              onChange={handleFileSelect}
+                            />
+                          </label>
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Supports JPG, PNG, WebP images
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <h3 className="font-medium mb-2 flex items-center gap-2">
+                          <Icons.Image className="h-4 w-4" />
+                          Preview
+                        </h3>
+                        <div className="border rounded-lg p-2">
+                          <img 
+                            src={imagePreview} 
+                            alt="Preview" 
+                            className="max-w-full h-auto rounded"
+                            onLoad={(e) => {
+                              const img = e.target as HTMLImageElement;
+                              setImageDimensions({
+                                width: img.naturalWidth,
+                                height: img.naturalHeight
+                              });
+                            }}
+                          />
+                          <div className="mt-3 space-y-2 text-sm">
+                            <div className="grid grid-cols-3 gap-2">
+                              <div className="bg-secondary/50 p-2 rounded">
+                                <p className="text-xs font-medium text-muted-foreground">Format</p>
+                                <p>{uploadedFile.type.split('/')[1].toUpperCase()}</p>
+                              </div>
+                              <div className="bg-secondary/50 p-2 rounded">
+                                <p className="text-xs font-medium text-muted-foreground">Dimensions</p>
+                                <p>{imageDimensions.width} × {imageDimensions.height}</p>
+                              </div>
+                              <div className="bg-secondary/50 p-2 rounded">
+                                <p className="text-xs font-medium text-muted-foreground">Size</p>
+                                <p>{formatFileSize(uploadedFile.size)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+        
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="font-medium flex items-center gap-2">
+                            <Icons.Settings2 className="h-4 w-4" />
+                            Required Settings
+                          </h3>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Basic parameters needed for image processing
+                          </p>
+                        </div>
+                        
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-2">
+                              <Label>Target Height</Label>
+                              <Input
+                                type="number"
+                                value={basicConfig.height}
+                                onChange={(e) => setBasicConfig(prev => ({
+                                  ...prev,
+                                  height: parseInt(e.target.value)
+                                }))}
+                                min={1}
+                              />
+                              <p className="text-xs text-muted-foreground">Output image height in pixels</p>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Target Width</Label>
+                              <Input
+                                type="number"
+                                value={basicConfig.width}
+                                onChange={(e) => setBasicConfig(prev => ({
+                                  ...prev,
+                                  width: parseInt(e.target.value)
+                                }))}
+                                min={1}
+                              />
+                              <p className="text-xs text-muted-foreground">Output image width in pixels</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <Label>Normalize Values</Label>
+                              <p className="text-xs text-muted-foreground">Scale pixel values to 0-1 range</p>
+                            </div>
+                            <Switch
+                              checked={basicConfig.normalize}
+                              onCheckedChange={(checked) => setBasicConfig(prev => ({
+                                ...prev,
+                                normalize: checked
+                              }))}
+                            />
+                          </div>
+                        </div>
+        
+                        {isAdvancedMode && (
+                          <div className="space-y-6 mt-6">
+                            <div>
+                              <h3 className="font-medium flex items-center gap-2">
+                                <Icons.Settings className="h-4 w-4" />
+                                Advanced Settings
+                              </h3>
+                              <p className="text-sm text-muted-foreground mb-4">
+                                Fine-tune the preprocessing pipeline
+                              </p>
+                            </div>
+        
+                            <Accordion type="single" collapsible className="w-full">
+                              {/* Resizing Options */}
+                              <AccordionItem value="resizing">
+                                <AccordionTrigger>
+                                  <div className="flex items-center gap-2">
+                                    <Icons.Maximize2 className="h-4 w-4" />
+                                    Resizing Options
+                                  </div>
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                  <div className="space-y-4 pt-2">
+                                    <div className="space-y-2">
+                                      <Label>Interpolation Method</Label>
+                                      <Select 
+                                        value={advancedConfig.resizing.method}
+                                        onValueChange={(value) => setAdvancedConfig(prev => ({
+                                          ...prev,
+                                          resizing: { ...prev.resizing, method: value }
+                                        }))}
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {resizeMethods.map(method => (
+                                            <SelectItem key={method.value} value={method.value}>
+                                              <div>
+                                                <div>{method.label}</div>
+                                                <div className="text-xs text-muted-foreground">{method.description}</div>
+                                              </div>
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <Label>Preserve Aspect Ratio</Label>
+                                        <p className="text-xs text-muted-foreground">Maintain image proportions</p>
+                                      </div>
+                                      <Switch
+                                        checked={advancedConfig.resizing.preserveAspectRatio}
+                                        onCheckedChange={(checked) => setAdvancedConfig(prev => ({
+                                          ...prev,
+                                          resizing: { ...prev.resizing, preserveAspectRatio: checked }
+                                        }))}
+                                      />
+                                    </div>
+                                  </div>
+                                </AccordionContent>
+                              </AccordionItem>
+        
+                              {/* Preprocessing Options */}
+                              <AccordionItem value="preprocessing">
+                                <AccordionTrigger>
+                                  <div className="flex items-center gap-2">
+                                    <Icons.Filter className="h-4 w-4" />
+                                    Preprocessing Options
+                                  </div>
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                  <div className="space-y-4 pt-2">
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <Label>Center Crop</Label>
+                                        <p className="text-xs text-muted-foreground">Crop from image center</p>
+                                      </div>
+                                      <Switch
+                                        checked={advancedConfig.preprocessing.centerCrop}
+                                        onCheckedChange={(checked) => setAdvancedConfig(prev => ({
+                                          ...prev,
+                                          preprocessing: { ...prev.preprocessing, centerCrop: checked }
+                                        }))}
+                                      />
+                                    </div>
+                                     {/* Data Shuffling Section */}
+<div className="border-t pt-4 mt-4">
+  <div className="flex items-center justify-between">
+    <div>
+      <Label>Data Shuffling</Label>
+      <p className="text-xs text-muted-foreground">Configure how data is shuffled during preprocessing</p>
+    </div>
+    <DataShufflingDialog />
+  </div>
+</div>
+      
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <Label>Channel First Format</Label>
+                                        <p className="text-xs text-muted-foreground">Use NCHW format</p>
+                                      </div>
+                                      <Switch
+                                        checked={advancedConfig.preprocessing.channelFirst}
+                                        onCheckedChange={(checked) => setAdvancedConfig(prev => ({
+                                          ...prev,
+                                          preprocessing: { ...prev.preprocessing, channelFirst: checked }
+                                        }))}
+                                      />
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <Label>Convert to Grayscale</Label>
+                                        <p className="text-xs text-muted-foreground">Single channel output</p>
+                                      </div>
+                                      <Switch
+                                        checked={advancedConfig.preprocessing.grayscale}
+                                        onCheckedChange={(checked) => setAdvancedConfig(prev => ({
+                                          ...prev,
+                                          preprocessing: { ...prev.preprocessing, grayscale: checked }
+                                        }))}
+                                      />
+                                    </div>
+                                  </div>
+                                </AccordionContent>
+                              </AccordionItem>
+                            </Accordion>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        };
   const ConfigField = ({ 
     field, 
     value, 
@@ -2525,6 +3065,8 @@ const CategoryTabs = ({
     const [activeCategory, setActiveCategory] = useState('common');
     const [selectedOperation, setSelectedOperation] = useState<Operation | null>(null);
     const [operationConfigs, setOperationConfigs] = useState<Record<string, Record<string, any>>>({});
+    const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+
   
     const filteredOperations = useMemo(() => {
       let ops = allOperations;
@@ -2561,6 +3103,35 @@ const CategoryTabs = ({
         }));
       }
     }, []);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+          coordinateGetter: sortableKeyboardCoordinates,
+        })
+      );
+    
+      const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        
+        if (over && active.id !== over.id) {
+          setSelectedOps((items) => {
+            const oldIndex = items.findIndex(item => item.id === active.id);
+            const newIndex = items.findIndex(item => item.id === over.id);
+            
+            return arrayMove(items, oldIndex, newIndex);
+          });
+        }
+      };
+
+      const handleDeleteOperation = (opId: string) => {
+        setSelectedOps(prev => prev.filter(op => op.id !== opId));
+        setOperationConfigs(prev => {
+          const newConfigs = { ...prev };
+          delete newConfigs[opId];
+          return newConfigs;
+        });
+      };
   
     const handleConfigChange = useCallback((opId: string, key: string, value: any) => {
       setOperationConfigs(prev => ({
@@ -2571,66 +3142,93 @@ const CategoryTabs = ({
         }
       }));
     }, []);
+
+    const handleFileUpload = (file: File) => {
+        setUploadedFile(file);
+      };
+    
   
-    return (
-      <div className="grid grid-cols-12 gap-4">
-        {/* Operations Browser - Left Side */}
-        <Card className="col-span-8">
+      return (
+        <div className="space-y-4">
+          {/* Top row - Build Your Model and Dataset Structure only */}
+          <div className="grid grid-cols-12 gap-4"> {/* Modified: Changed from grid-cols-2 to grid-cols-12 */}
+          {/* Build Your Model Card */}
+          <Card className="col-span-9"> {/* Changed from col-span-8 to col-span-9 */}
           <CardHeader>
-            <CardTitle>Select Operations</CardTitle>
-            <div className="space-y-4">
-              <SearchBar value={searchTerm} onChange={setSearchTerm} />
-              <CategoryTabs
-                categories={Object.keys(CATEGORIES)}
-                activeCategory={activeCategory}
-                onCategoryChange={setActiveCategory}
-              />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[600px]">
-              <OperationsList
-                operations={filteredOperations}
-                onOperationClick={handleOperationAdd}
-              />
-            </ScrollArea>
-          </CardContent>
-        </Card>
-  
-        {/* Selected Operations - Right Side */}
-        <Card className="col-span-4">
-          <CardHeader>
-            <CardTitle>Pipeline Configuration</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ScrollArea className="h-[600px]">
-              {selectedOps.map((operation) => (
-                <div key={operation.id} className="mb-4">
-                  <Card>
-                    <CardHeader className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {operation.icon}
-                          <span className="font-medium">{operation.name}</span>
-                        </div>
-                        <OperationDetails operation={operation} />
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-4">
-                      <ConfigurationPanel
-                        operation={operation}
-                        config={operationConfigs[operation.id] || {}}
-                        onChange={(key, value) => handleConfigChange(operation.id, key, value)}
-                      />
-                    </CardContent>
-                  </Card>
+                <CardTitle>Build Your Model</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ImageUploadSection onFileUpload={handleFileUpload} />
+              </CardContent>
+            </Card>
+    
+           {/* Dataset Structure Card */}
+    <div className="col-span-3"> {/* Added div with col-span-3 */}
+    <DatasetStructureCard />
+    </div>
+          </div>
+    
+          {/* Bottom section - Operations Browser and Pipeline Configuration side by side */}
+          <div className="grid grid-cols-2 gap-4">
+            {/* Left side - Operations Browser */}
+            <Card>
+              <CardContent className="p-6">
+                <CategoryTabs
+                  categories={Object.keys(CATEGORIES)}
+                  activeCategory={activeCategory}
+                  onCategoryChange={setActiveCategory}
+                />
+                <div className="mt-4">
+                  <SearchBar value={searchTerm} onChange={setSearchTerm} />
                 </div>
-              ))}
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  };
+                <ScrollArea className="h-[600px] mt-4">
+                  <OperationsList
+                    operations={filteredOperations}
+                    onOperationClick={handleOperationAdd}
+                  />
+                </ScrollArea>
+              </CardContent>
+            </Card>
+    
+            {/* Right side - Pipeline Configuration */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Pipeline Configuration</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[600px]">
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={selectedOps.map(op => op.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {selectedOps.map((operation) => (
+                        <SortableOperationItem
+                          key={operation.id}
+                          id={operation.id}
+                          operation={operation}
+                          config={operationConfigs[operation.id] || {}}
+                          onConfigChange={(key, value) => handleConfigChange(operation.id, key, value)}
+                          onDelete={() => handleDeleteOperation(operation.id)}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          </div>
+    
+          {/* ML Dashboard at the bottom */}
+          <div className="mt-4">
+            <MLDashboard />
+          </div>
+        </div>
+      );
+    };
   
   export default TFOperationsBrowser;
