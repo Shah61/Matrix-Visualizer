@@ -27,8 +27,14 @@ import DatasetStructureCard from './DatasetStructureCard';
 import MLDashboard from './MLDashboard';
 
 // Import types and data
-import { Operation } from './types/operations';
+import { LayerConfig, Operation } from './types/operations';
 import { allOperations, CATEGORIES } from './types/operationsData';
+import ImageProcessingPipeline from './image/ImageProcessingPipeline';
+import HyperparameterTuning from './HyperparameterTuning';
+import ModelArchitectureVisualizer from './ModelArchitectureVisualizer';
+import TrainingProgress from './TrainingProgress';
+import { Layers, Clock, Play, RotateCcw, Sliders } from 'lucide-react';
+import { Button } from './ui/button';
 
 export const TFOperationsBrowser = () => {
   const [selectedOps, setSelectedOps] = useState<Operation[]>([]);
@@ -79,8 +85,13 @@ export const TFOperationsBrowser = () => {
 
   const handleOperationAdd = useCallback((operation: Operation) => {
     setSelectedOps(prev => {
-      if (prev.find(op => op.id === operation.id)) return prev;
-      return [...prev, operation];
+      // Create a unique ID for this instance of the operation
+      const uniqueId = `${operation.id}_${Date.now()}`;
+      const newOperation = {
+        ...operation,
+        id: uniqueId // Override the original ID with our unique one
+      };
+      return [...prev, newOperation];
     });
     
     if (operation.config) {
@@ -116,6 +127,28 @@ export const TFOperationsBrowser = () => {
     setUploadedFile(file);
   };
 
+  const architectureLayers: LayerConfig[] = selectedOps.map(op => ({
+    id: op.id,
+    name: op.name,
+    type: op.category,
+    description: op.description,
+    outputShape: op.config?.outputShape || 'Not specified',
+    icon: op.icon,
+    common: op.common,
+    gpu_support: op.gpu_support || false,
+    tpu_support: op.tpu_support || false,
+    config: op.config ? {
+      units: op.config.units?.default,
+      filters: op.config.filters?.default,
+      kernel_size: op.config.kernel_size?.default,
+      activation: op.config.activation?.default,
+      rate: op.config.rate?.default,
+      use_bias: op.config.use_bias?.default,
+    } : undefined,
+    performance_tips: op.performance_tips,
+    version_added: op.version_added
+  }));
+
   return (
     <div className="space-y-4">
       {/* Top row - Build Your Model and Dataset Structure */}
@@ -134,6 +167,60 @@ export const TFOperationsBrowser = () => {
         </div>
       </div>
 
+       {/* Model Architecture and Training Section */}
+       <div className="grid grid-cols-12 gap-4">
+  <div className="col-span-4">
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Layers className="h-5 w-5" />
+          Live Model Architecture
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="h-[500px] overflow-auto">
+        <ModelArchitectureVisualizer layers={architectureLayers} />
+      </CardContent>
+    </Card>
+  </div>
+
+  <div className="col-span-4">
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Training Progress
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon">
+              <Play className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon">
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="h-[500px] overflow-auto">
+        <TrainingProgress />
+      </CardContent>
+    </Card>
+  </div>
+
+  <div className="col-span-4">
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Sliders className="h-5 w-5" />
+          Hyperparameter Tuning
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="h-[500px] overflow-auto">
+        <HyperparameterTuning />
+      </CardContent>
+    </Card>
+  </div>
+</div>
       {/* Bottom section - Operations Browser and Pipeline Configuration */}
       <div className="grid grid-cols-2 gap-4">
         {/* Left side - Operations Browser */}

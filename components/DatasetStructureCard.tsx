@@ -34,6 +34,7 @@ interface FileNode {
   children?: FileNode[];
   size?: number;
   path: string;
+  previewUrl?: string; // URL for previewing the file
 }
 
 const FileTreeNode = ({ node, level = 0 }: { node: FileNode; level?: number }) => {
@@ -42,8 +43,8 @@ const FileTreeNode = ({ node, level = 0 }: { node: FileNode; level?: number }) =
 
   return (
     <div>
-      <div 
-        className="flex items-center py-1 hover:bg-secondary/50 rounded px-2" 
+      <div
+        className="flex items-center py-1 hover:bg-secondary/50 rounded px-2"
         style={{ marginLeft: `${indent}px` }}
       >
         {node.type === 'directory' ? (
@@ -60,10 +61,15 @@ const FileTreeNode = ({ node, level = 0 }: { node: FileNode; level?: number }) =
             {node.name}
           </button>
         ) : (
-          <div className="flex items-center gap-2 text-sm ml-6">
+          <a
+            href={node.previewUrl || `#${node.name}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-sm ml-6"
+          >
             <Icons.FileText className="h-4 w-4 text-gray-500" />
             {node.name}
-          </div>
+          </a>
         )}
       </div>
 
@@ -78,6 +84,7 @@ const FileTreeNode = ({ node, level = 0 }: { node: FileNode; level?: number }) =
   );
 };
 
+
 const DatasetStructureCard = () => {
   const [fileStructure, setFileStructure] = useState<FileNode | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -87,11 +94,13 @@ const DatasetStructureCard = () => {
     
     if (entry.kind === 'file') {
       const file = await entry.getFile();
+      const previewUrl = URL.createObjectURL(file);
       return {
         name: entry.name,
         type: 'file',
         size: file.size,
-        path: entry.name
+        path: entry.name,
+        previewUrl
       };
     }
     
@@ -145,11 +154,13 @@ const DatasetStructureCard = () => {
         for await (const entry of dirHandle.values()) {
           if (entry.kind === 'file') {
             const file = await entry.getFile();
+            const previewUrl = URL.createObjectURL(file);
             parentNode.children?.push({
               name: entry.name,
               type: 'file',
               size: file.size,
-              path: `${parentNode.path}/${entry.name}`
+              path: `${parentNode.path}/${entry.name}`,
+              previewUrl
             });
           } else if (entry.kind === 'directory') {
             const newDir: FileNode = {

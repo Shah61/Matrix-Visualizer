@@ -3,7 +3,7 @@ import { useState } from "react";
 
 import { Tabs, TabsTrigger, TabsList } from "@radix-ui/react-tabs";
 import { FilterType } from "./types";
-import TFOperationsBrowser from "../MatrixPlaylist";
+import TFOperationsBrowser from "../TFOperationsBrowser";
 import { Matrix } from "./types";
 
 const HarisWorkspace = () => {
@@ -17,16 +17,9 @@ const HarisWorkspace = () => {
 
   return (
     <div className="p-4">
-      <Tabs defaultValue="normal" onValueChange={setActiveTab}>
-        <TabsList className="mb-4">
-          <TabsTrigger value="normal">Normal</TabsTrigger>
-          <TabsTrigger value="advanced">Advanced</TabsTrigger>
-        </TabsList>
-
         <div className="mb-6">
           <TFOperationsBrowser />
         </div>
-      </Tabs>   
     </div>
   );
 };
