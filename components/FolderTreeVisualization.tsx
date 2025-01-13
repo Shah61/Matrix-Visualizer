@@ -1,19 +1,100 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import * as Icons from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import type { FileSystemDirectoryHandle } from './workspaces/types';
 
-interface TreeNode {
+type TreeNode = {
   name: string;
   type: 'folder' | 'file';
   children?: TreeNode[];
 }
 
-interface FolderTreeProps {
+type FolderTreeProps = {
   className?: string;
 }
 
-const FolderTreeVisualization: React.FC<FolderTreeProps> = ({ className }) => {
-  const [expandedFolders, setExpandedFolders] = useState(new Set(['dataset']));
+declare global {
+  interface Window {
+    showDirectoryPicker(): Promise<FileSystemDirectoryHandle>;
+  }
+}
+
+const FolderTreeVisualization: React.FC<FolderTreeProps> = ({ className }): JSX.Element => {
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['dataset']));
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [selectedFolder, setSelectedFolder] = useState<FileSystemDirectoryHandle | null>(null);
+  const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false);
+
+  const handleFolderSelect = async (): Promise<void> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        const directoryHandle = await window.showDirectoryPicker();
+        setSelectedFolder(directoryHandle);
+      } catch (err) {
+        // Silently handle abort error
+        if (err instanceof Error && err.name === 'AbortError') {
+          return;
+        }
+        // Re-throw any other errors to be caught by outer try-catch
+        throw err;
+      }
+  
+    } catch (err) {
+      // Handle any non-abort errors
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingOver(false);
+
+    const items = Array.from(e.dataTransfer.items);
+    const folderItem = items.find(item => item.kind === 'file' && 
+      item.webkitGetAsEntry()?.isDirectory);
+
+    if (!folderItem) {
+      setError('Please drop a folder');
+      return;
+    }
+
+    try {
+      const directoryHandle = await window.showDirectoryPicker();
+      setSelectedFolder(directoryHandle);
+    } catch (err) {
+      if (err instanceof Error) {
+        if (err.name !== 'AbortError') {
+          setError(err.message);
+        }
+      } else {
+        setError('An unknown error occurred');
+      }
+    }
+  };
 
   const folderStructure: TreeNode = {
     name: 'dataset',
@@ -64,7 +145,7 @@ const FolderTreeVisualization: React.FC<FolderTreeProps> = ({ className }) => {
     ],
   };
 
-  const renderTree = (node: TreeNode, path = '') => {
+  const renderTree = (node: TreeNode, path: string = ''): JSX.Element => {
     const currentPath = `${path}/${node.name}`;
     const isExpanded = expandedFolders.has(currentPath);
     
@@ -84,6 +165,7 @@ const FolderTreeVisualization: React.FC<FolderTreeProps> = ({ className }) => {
                   setExpandedFolders(newExpanded);
                 }}
                 className="focus:outline-none"
+                type="button"
               >
                 {isExpanded ? (
                   <Icons.ChevronDown className="h-4 w-4" />
@@ -119,8 +201,45 @@ const FolderTreeVisualization: React.FC<FolderTreeProps> = ({ className }) => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="bg-secondary/20 rounded-lg p-4">
-          {renderTree(folderStructure)}
+        <div className="flex flex-col gap-4">
+          {!selectedFolder && (
+            <div 
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors
+                ${isDraggingOver ? 'border-primary bg-primary/5' : 'border-border'}`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
+              <div className="flex flex-col items-center gap-4">
+                <Icons.Folder className="h-12 w-12 text-muted-foreground" />
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm text-muted-foreground">
+                    Drag and drop your dataset folder here, or
+                  </p>
+                  <button
+                    onClick={handleFolderSelect}
+                    disabled={isLoading}
+                    className="text-primary hover:underline focus:outline-none"
+                    type="button"
+                  >
+                    Choose Folder
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {selectedFolder && (
+            <div className="bg-secondary/20 rounded-lg p-4">
+              {renderTree(folderStructure)}
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
