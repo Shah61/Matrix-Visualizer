@@ -39,6 +39,7 @@ import DataInsightsDashboard from './dashboard/DataInsightsDashboard ';
 import ModelCompilationSettings from './ModelCompilationSettings';
 import ModelPreviewTesting from './ModelPreviewTesting';
 import CollaborationTools from './CollaborationTools';
+import DataShufflePanel from './DataShufflePanel ';
 
 export const TFOperationsBrowser = () => {
   const [selectedOps, setSelectedOps] = useState<Operation[]>([]);
@@ -174,21 +175,9 @@ export const TFOperationsBrowser = () => {
     <CollaborationTools />
   </div>
 
-       {/* Model Architecture and Training Section */}
-       <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-4">
-          <Card>
-            <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Layers className="h-5 w-5" />
-            Live Model Architecture
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="h-[500px] overflow-auto">
-        <ModelArchitectureVisualizer layers={architectureLayers} />
-        </CardContent>
-      </Card>
-      </div>
+       {/* Training Section */}
+       <div className="grid grid-cols-8 gap-4">
+       
 
       <div className="col-span-4">
         <Card>
@@ -299,11 +288,25 @@ export const TFOperationsBrowser = () => {
       </div>
   </div>
 
-      {/* ML Dashboard */}
-      <div className="mt-4">
-        <MLDashboard />
+      {/* Live Model Architecture */}
+      <div className="col-span-4">
+          <Card>
+            <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Layers className="h-5 w-5" />
+            Live Model Architecture
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="h-[500px] overflow-auto">
+        <ModelArchitectureVisualizer layers={architectureLayers} />
+        </CardContent>
+      </Card>
       </div>
+
+
+      <DataShufflePanel/>
     </div>
+    
 
     
     

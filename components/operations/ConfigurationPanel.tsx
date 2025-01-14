@@ -1,6 +1,7 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Settings } from 'lucide-react';
 import { Operation } from '../types/operations';
 import { ConfigField } from '../common/ConfigField';
@@ -20,6 +21,7 @@ export const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* Static section - always visible */}
       {operation.performance_tips && (
         <div className="space-y-2">
           <h3 className="font-medium text-sm">Performance Tips</h3>
@@ -49,26 +51,28 @@ export const ConfigurationPanel: React.FC<ConfigurationPanelProps> = ({
             </div>
           </AccordionTrigger>
           <AccordionContent>
-            <div className="space-y-4 p-2">
-              {Object.entries(operation.config).map(([key, field]) => (
-                <div key={key} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">{field.label}</label>
-                    {field.required && (
-                      <Badge variant="outline" className="text-xs">Required</Badge>
+            <ScrollArea className="h-96 w-full pr-4">
+              <div className="space-y-4 p-2">
+                {Object.entries(operation.config).map(([key, field]) => (
+                  <div key={key} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium">{field.label}</label>
+                      {field.required && (
+                        <Badge variant="outline" className="text-xs">Required</Badge>
+                      )}
+                    </div>
+                    <ConfigField
+                      field={field}
+                      value={config[key] ?? field.default}
+                      onChange={(value) => onChange(key, value)}
+                    />
+                    {field.description && (
+                      <p className="text-xs text-gray-500">{field.description}</p>
                     )}
                   </div>
-                  <ConfigField
-                    field={field}
-                    value={config[key] ?? field.default}
-                    onChange={(value) => onChange(key, value)}
-                  />
-                  {field.description && (
-                    <p className="text-xs text-gray-500">{field.description}</p>
-                  )}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </ScrollArea>
           </AccordionContent>
         </AccordionItem>
       </Accordion>
