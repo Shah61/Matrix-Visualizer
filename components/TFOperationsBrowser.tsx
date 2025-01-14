@@ -35,6 +35,10 @@ import ModelArchitectureVisualizer from './ModelArchitectureVisualizer';
 import TrainingProgress from './TrainingProgress';
 import { Layers, Clock, Play, RotateCcw, Sliders } from 'lucide-react';
 import { Button } from './ui/button';
+import DataInsightsDashboard from './dashboard/DataInsightsDashboard ';
+import ModelCompilationSettings from './ModelCompilationSettings';
+import ModelPreviewTesting from './ModelPreviewTesting';
+import CollaborationTools from './CollaborationTools';
 
 export const TFOperationsBrowser = () => {
   const [selectedOps, setSelectedOps] = useState<Operation[]>([]);
@@ -166,46 +170,49 @@ export const TFOperationsBrowser = () => {
           <DatasetStructureCard />
         </div>
       </div>
+      <div className="col-span-3">
+    <CollaborationTools />
+  </div>
 
        {/* Model Architecture and Training Section */}
        <div className="grid grid-cols-12 gap-4">
-  <div className="col-span-4">
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Layers className="h-5 w-5" />
-          Live Model Architecture
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="h-[500px] overflow-auto">
+        <div className="col-span-4">
+          <Card>
+            <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Layers className="h-5 w-5" />
+            Live Model Architecture
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="h-[500px] overflow-auto">
         <ModelArchitectureVisualizer layers={architectureLayers} />
-      </CardContent>
-    </Card>
-  </div>
+        </CardContent>
+      </Card>
+      </div>
 
-  <div className="col-span-4">
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Training Progress
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon">
-              <Play className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon">
-              <RotateCcw className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="h-[500px] overflow-auto">
-        <TrainingProgress />
-      </CardContent>
-    </Card>
-  </div>
+      <div className="col-span-4">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                  Training Progress
+               </div>
+              <div className="flex items-center gap-2">
+              <Button variant="outline" size="icon">
+               <Play className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon">
+                <RotateCcw className="h-4 w-4" />
+              </Button>
+              </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="h-[500px] overflow-auto">
+          <TrainingProgress />
+          </CardContent>
+        </Card>
+      </div>
 
   <div className="col-span-4">
     <Card>
@@ -221,6 +228,13 @@ export const TFOperationsBrowser = () => {
     </Card>
   </div>
 </div>
+{/* Data Insights Dashboard - NEW SECTION */}
+<div className="grid grid-cols-3 gap-4">
+        <div className="col-span-12">
+        <DataInsightsDashboard />
+      </div>
+    </div>
+
       {/* Bottom section - Operations Browser and Pipeline Configuration */}
       <div className="grid grid-cols-2 gap-4">
         {/* Left side - Operations Browser */}
@@ -274,13 +288,25 @@ export const TFOperationsBrowser = () => {
             </ScrollArea>
           </CardContent>
         </Card>
+      {/* Middle - Model Compilation */}
+      <div className="col-span-1">
+          <ModelCompilationSettings />
       </div>
+
+      {/* Right side - Model Preview & Testing */}
+      <div className="col-span-1 ">
+        <ModelPreviewTesting />
+      </div>
+  </div>
 
       {/* ML Dashboard */}
       <div className="mt-4">
         <MLDashboard />
       </div>
     </div>
+
+    
+    
   );
 };
 
